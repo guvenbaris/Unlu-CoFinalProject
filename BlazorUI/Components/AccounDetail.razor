@@ -1,0 +1,235 @@
+﻿@page  "/accountdetail"
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using Newtonsoft.Json
+@using UnluCoProductCatalog.Application.ViewModels.OfferViewModels
+@using System.Net.Http.Headers
+@using BlazorUI.Common.Authentication
+@inject IHttpClientFactory ClientFactory
+@inject ProtectedLocalStorage _localStorage
+
+
+@if (@UserOffers is null && @ProductOffers is null)
+{
+    <h1>Giriş Yapınız</h1>
+}
+
+else
+{
+    if (Paging)
+    {
+        <div class="container">
+            @*Kullanıcının yapıtğı teklifler*@
+            <div style="height: 50vh; max-width: 100%;">
+                <h2>Giden Teklifler</h2>
+                <table class="table">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th scope="col">Ürün Adı</th>
+                            <th scope="col">Açıklama</th>
+                            <th scope="col">Marka</th>
+                            <th scope="col">Teklif</th>
+                            <th scope="col">Onay Durumu</th>
+                            <th scope="col"></th>
+                            <th scope="col"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-light">
+                        @foreach (var offer in UserOffers)
+                        {
+                            <tr>
+                                <td>@offer.Product.ProductName</td>
+                                <td>@offer.Product.Description</td>
+                                <td>@offer.Product.BrandName</td>
+                                <td>@offer.OfferedPrice</td>
+                                @if (@offer.IsApproved)
+                                {
+                                    <td class="bg-success" style="text-align: center; border-radius:10px;">Onaylandı</td>
+                                }
+                                else
+                                {
+                                    <td class="bg-warning" style="text-align: center; border-radius:10px;">Bekliyor</td>
+                                }
+                                <td><button class="btn btn-warning" @onclick="() => UpdateOffer()">Güncelle</button></td>
+                                <td><button class="btn btn-danger" @onclick="() => RetractTheOffer(offer.Id)">Geri Çek</button></td>
+                            </tr>
+                         }
+
+                    </tbody>
+                </table>
+                <button style=" margin-left:80%;
+                               margin-right:0;width:20%;" type="button" class="btn btn-primary btn-lg" @onclick="ChangePage">
+                    Gelen Teklifler
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="container">
+            <div stlye="height :50vh; max-width:100%;">
+                <div>
+                    @*Kullanıcının ürünlerine gelen teklifler*@
+                    <h2>Gelen Teklifler</h2>
+                    <table class="table">
+
+                        <thead class="thead-dark">
+                        <tr>
+                            <th scope="col">Ürün Adı</th>
+                            <th scope="col">Açıklama</th>
+                            <th scope="col">Marka</th>
+                            <th scope="col">Teklif</th>
+                            <th scope="col">Onay</th>
+                            <th scope="col">Ürün Fiyatı</th>
+                            <th scope="col"></th>
+                            <th scope="col"></th>
+                        </tr>
+                        </thead>
+                        <tbody class="bg-light">
+
+                        @foreach (var offer in ProductOffers)
+                        {
+                            <tr>
+                                <td>@offer.Product.ProductName</td>
+                                <td>@offer.Product.Description</td>
+                                <td>@offer.Product.BrandName</td>
+                                <td>@offer.OfferedPrice</td>
+
+                                @if (@offer.IsApproved)
+                                {
+                                    <td class="bg-success" style="text-align: center; border-radius:10px;">Onaylandı</td>
+                                }
+                                else
+                                {
+                                    <td class="bg-warning" style="text-align: center; border-radius:10px;">Bekliyor</td>
+                                }
+
+                                <td>@offer.Product.Price</td>
+                                <td><button class="btn btn-success" @onclick="() => OfferApprove(offer.Id)">Onayla</button></td>
+                                <td><button class="btn btn-danger" @onclick="() => DeleteOffer(offer.Id)">Reddet</button></td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                    
+                    <button style=" margin-left:80%;
+                                   margin-right:0;width:20%;" type="button" class="btn btn-primary btn-lg" @onclick="ChangePage">
+                        Giden Teklifler
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code
+{
+    public IEnumerable<GetOfferUserViewModel> UserOffers { get; set; }
+
+    public IEnumerable<GetOfferUserViewModel> ProductOffers { get; set; }
+
+    public AuthStateProvider Provider { get; set; }
+    [Inject]
+    public NavigationManager NavigationManager { get; set; }
+
+    public bool Paging { get; set; } = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+
+        var client = ClientFactory.CreateClient();
+
+        var token = await _localStorage.GetAsync<string>("authToken");
+
+        var userOfferRequest = new HttpRequestMessage(HttpMethod.Get, "http://localhost:3000/api/AccountDetails/getuseroffers");
+        userOfferRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.Value);
+
+        var response = await client.SendAsync(userOfferRequest);
+
+        if (response.IsSuccessStatusCode)
+        {
+
+            var json = await response.Content.ReadAsStringAsync();
+            UserOffers = JsonConvert.DeserializeObject<IEnumerable<GetOfferUserViewModel>>(json);
+        }
+
+        var productOfferRequest = new HttpRequestMessage(HttpMethod.Get, "http://localhost:3000/api/AccountDetails/getuserproductoffer");
+
+        productOfferRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.Value);
+
+        var productResponse = await client.SendAsync(productOfferRequest);
+
+        if (productResponse.IsSuccessStatusCode)
+        {
+            var json = await productResponse.Content.ReadAsStringAsync();
+            ProductOffers = JsonConvert.DeserializeObject<IEnumerable<GetOfferUserViewModel>>(json);
+        }
+
+        StateHasChanged();
+    }
+    
+
+    public async void RetractTheOffer(int offerId)
+    {
+        var client = ClientFactory.CreateClient();
+
+        var token = await _localStorage.GetAsync<string>("authToken");
+
+        string path = "http://localhost:3000/api/Products/retractoffer/" + offerId;
+
+        var request = new HttpRequestMessage(HttpMethod.Put, path);
+
+        var response = await client.SendAsync(request);
+
+        if (response.IsSuccessStatusCode)
+        {
+            StateHasChanged();
+        }
+
+    }
+    public async void OfferApprove(int offerId)
+    {
+        var client = ClientFactory.CreateClient();
+
+        var token = await _localStorage.GetAsync<string>("authToken");
+
+        string path = "http://localhost:3000/api/Offers/offeraprove/" + offerId;
+
+        var request = new HttpRequestMessage(HttpMethod.Patch, path);
+
+        var response = await client.SendAsync(request);
+
+        if (response.IsSuccessStatusCode)
+        {
+            StateHasChanged();
+        }
+
+    }
+
+    public async void DeleteOffer(int offerId)
+    {
+        var client = ClientFactory.CreateClient();
+
+        var token = await _localStorage.GetAsync<string>("authToken");
+
+        string path = "http://localhost:3000/api/Offers/" + offerId;
+
+        var request = new HttpRequestMessage(HttpMethod.Delete, path);
+
+        var response = await client.SendAsync(request);
+
+        if (response.IsSuccessStatusCode)
+        {
+            StateHasChanged();
+        }
+    }
+
+    public void ChangePage()
+    {
+        Paging = !Paging;
+    }
+
+    private void UpdateOffer()
+    {
+        NavigationManager.NavigateTo("offer");
+    }
+}

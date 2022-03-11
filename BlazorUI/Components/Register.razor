@@ -1,0 +1,88 @@
+﻿@page "/register"
+@using UnluCoProductCatalog.Application.ViewModels.UserViewModels
+@using BlazorUI.Common.Authentication
+
+
+
+@if (ShowAuthError)
+{
+    <div class="alert alert-danger" role="alert">
+        <p>@Message</p>
+    </div>
+}
+<EditForm Model="_register" OnValidSubmit="Submit" class="card card-body bg-light mt-5 w-75 p-3">
+    <DataAnnotationsValidator />
+    <h3>Register</h3>
+    <div class="form-group row">
+        <label for="username" class="col-sm-2 col-form-label">Username</label>
+        <div class="col-md-10">
+            <InputText id="username" class="form-control" @bind-Value="_register.UserName" />
+            <ValidationMessage For="@(() => _register.UserName)" />
+        </div>
+    </div>
+
+    <div class="form-group row">
+        <label for="email" class="col-sm-2 col-form-label">Email:</label>
+        <div class="col-md-10">
+            <InputText id="email" class="form-control" @bind-Value="_register.Email" />
+            <ValidationMessage For="@(() => _register.Email)" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="password" class="col-sm-2 col-form-label">Password:</label>
+        <div class="col-md-10">
+            <InputText type="password" id="password" class="form-control" @bind-Value="_register.Password" />
+            <ValidationMessage For="@(() => _register.Password)" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="passwordCheck" class="col-sm-2 col-form-label">Repeat Password:</label>
+        <div class="col-md-10">
+            <InputText type="password" id="passwordCheck" class="form-control" @bind-Value="_passwordCheck" />
+            <ValidationMessage For="@(() => _passwordCheck)" />
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 text-right">
+            <button type="submit" class="btn btn-warning">Register</button>
+        </div>
+    </div>
+</EditForm>
+@code {
+
+    private readonly RegisterViewModel _register = new RegisterViewModel();
+    private string _passwordCheck ="";
+    [Inject]
+    public IAuthenticationService AuthenticationService { get; set; }
+    [Inject]
+    public NavigationManager NavigationManager { get; set; }
+    public bool ShowAuthError { get; set; }
+    public  string Message { get; set;}
+
+    private async Task Submit()
+    {
+        ShowAuthError = false;
+
+        if (_register.Password == _passwordCheck)
+        {
+            var result = await AuthenticationService.Register(_register);
+
+            if (string.IsNullOrWhiteSpace(result) )
+            {
+                ShowAuthError = true;
+                Message = result;
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/");
+            }
+        }
+        else
+        {
+            ShowAuthError = true;
+            Message = "Password is not match";
+        }
+    }
+
+}

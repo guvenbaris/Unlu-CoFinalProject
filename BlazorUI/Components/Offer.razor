@@ -1,0 +1,181 @@
+﻿@page "/offer"
+@using UnluCoProductCatalog.Application.ViewModels.ProductViewModels
+@using UnluCoProductCatalog.Application.ViewModels.OfferViewModels
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using System.Net.Http.Headers
+@using System.Text
+@using Newtonsoft.Json
+@using JsonSerializer = System.Text.Json.JsonSerializer
+
+
+@inject IHttpClientFactory clientFactory
+@inject ProtectedLocalStorage _localStorage
+
+@if (ProductOfferViewModels is null)
+{
+    <h2>Loading...</h2>
+}
+else
+{
+    <div class="d-flex">
+    <div class="p-2 mr-auto">
+        <div style="height :48vh; max-width:90%; margin:20px;">
+            <h2>Ürünler</h2>
+            <table class="table">
+                <thead class="thead-dark">
+                    <tr>
+                        <th scope="col">Ürün Adı</th>
+                        <th scope="col">Kategori Adı</th>
+                        <th scope="col">Fiyatı</th>
+                        <th scope="col"></th>
+                        <th scope="col"></th>
+                    </tr>
+                </thead>
+                <tbody class="bg-light">
+                    @foreach (var productOffer in ProductOfferViewModels)
+                    {
+                        <tr>
+                            <td>@productOffer.ProductName</td>
+                            <td>@productOffer.CategoryName</td>
+                            <td>@productOffer.Price</td>
+                            <td><button @onclick="() =>TakeId(productOffer.Id)" class="btn btn-warning">Teklif Ver</button></td>
+                            <td><button @onclick="() =>SoldId(productOffer.Id)" class="btn btn-warning">Satın Al</button></td>
+                        </tr>
+                    }
+
+
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="p-6 " style="width: 70%;">
+        <EditForm Model="_offer" OnValidSubmit="AddOffer" class="card card-body bg-light mt-5 w-75 p-3">
+            @if (OfferIsActive)
+            {
+                <h3>Teklif</h3>
+            }
+            else
+            {
+                <h3>Satın Al</h3>
+            }
+            
+            @if (OfferIsActive)
+            {
+                <div class="form-group row">
+                    <label for="percentrate" class="col-sm-4 col-form-label">Yüzdelik Oran</label>
+                    <div class="col-sm-12">
+                        <InputText id="percentrate" class="form-control" @bind-Value="PercentRate" />
+                    </div>
+                </div>
+            }
+            <div class="form-group row">
+                <label for="offeredprice" class="col-sm-4 col-form-label">Teklif Fiyatı</label>
+                <div class="col-sm-12">
+                    <InputText id="offeredprice" class="form-control" @bind-Value="OfferedPrice" />
+                </div>
+            </div>
+            <div>
+                @if (OfferIsActive)
+                {
+                    <button type="submit" class="btn btn-warning btn-block">Teklif Ekle</button>
+                }
+                else
+                {
+                    <button type="submit" class="btn btn-danger btn-block">Satın Al</button>
+                }
+
+            </div>
+
+        </EditForm>
+    </div>
+</div>
+}
+
+@code {
+
+    public IEnumerable<ProductOfferViewModel> ProductOfferViewModels { get; set; }
+    private readonly CreateOfferViewModel _offer = new CreateOfferViewModel();
+    public string PercentRate { get; set; }
+    public string OfferedPrice { get; set; }
+    public int ProductId { get; set; }
+    public bool OfferIsActive { get; set; }
+
+    public async void AddOffer()
+    {
+        var client = clientFactory.CreateClient();
+        var token = await _localStorage.GetAsync<string>("authToken");
+
+
+        CreateOfferViewModel offer = new CreateOfferViewModel
+        {
+            OfferedPrice = Convert.ToDouble(OfferedPrice),
+            ProductId = ProductId,
+            PercentRate = Convert.ToInt32(PercentRate),
+        };
+
+        if (OfferIsActive)
+        {
+
+            string path = "http://localhost:3000/api/Offers";
+
+            var request = new HttpRequestMessage(HttpMethod.Post, path);
+
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.Value);
+            
+            var content = JsonSerializer.Serialize(offer);
+            var bodyContent = new StringContent(content, Encoding.UTF8, "application/json");
+            var result = await client.PostAsync(path, bodyContent);
+
+            var response = await client.SendAsync(request);
+
+            StateHasChanged();
+        }
+        else
+        {
+            string path = "http://localhost:3000/api/Products/sellproduct";
+
+            var request = new HttpRequestMessage(HttpMethod.Put, path);
+
+            ProductSellViewModel sellproduct = new ProductSellViewModel
+            {
+                Price = Convert.ToDouble(OfferedPrice),
+                ProductId = ProductId,
+            };
+
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.Value);
+            
+            var content = JsonSerializer.Serialize(sellproduct);
+            var bodyContent = new StringContent(content, Encoding.UTF8, "application/json");
+            var result = await client.PostAsync(path, bodyContent);
+
+            var response = await client.SendAsync(request);
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var client = clientFactory.CreateClient();
+        string path = "http://localhost:3000/api/Products/productsforoffer";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        var response = await client.SendAsync(request);
+
+        if (response.IsSuccessStatusCode)
+        {
+             var json = await response.Content.ReadAsStringAsync();
+             ProductOfferViewModels= JsonConvert.DeserializeObject<IEnumerable<ProductOfferViewModel>>(json).Take(10);
+        }
+
+    }
+
+    public void TakeId(int id)
+    {
+        OfferIsActive = true;
+        ProductId = id;
+    }
+    public void SoldId(int id)
+    {
+        OfferIsActive = false;
+        ProductId = id;
+    }
+
+}

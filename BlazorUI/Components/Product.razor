@@ -1,0 +1,339 @@
+﻿@page "/product"
+@using UnluCoProductCatalog.Application.ViewModels.ProductViewModels
+@using UnluCoProductCatalog.Application.ViewModels.CategoryViewModels
+@using UnluCoProductCatalog.Application.ViewModels.BrandViewModels
+@using UnluCoProductCatalog.Application.ViewModels.ColorViewModels
+@using UnluCoProductCatalog.Application.ViewModels.UsingStatusViewModels
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using System.Net.Http.Headers
+@using System.Text
+@using Newtonsoft.Json
+@using JsonSerializer = System.Text.Json.JsonSerializer
+@using System.IO
+@using System.Net.Http.Json
+@using UnluCoProductCatalog.Application.ViewModels.UploadedViewModels
+
+@inject IHttpClientFactory clientFactory
+@inject ProtectedLocalStorage _localStorage
+
+
+@if (Products is null || Categories is null || Brands is null || Colors is null || UsingStatuses is null)
+{
+    <h1>Giriş yapınız</h1>
+}
+
+else
+{
+    if (Paging)
+    {
+        <div class="container-fluid display-block">
+            <div style="height :48vh; max-width:90%; margin:20px;">
+                <h2>Ürünlerim</h2>
+                <table class="table">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th scope="col">Ürün Adı</th>
+                            <th scope="col">Açıklama</th>
+                            <th scope="col">Kategori</th>
+                            <th scope="col">Marka</th>
+                            <th scope="col">Price</th>
+                            <th scope="col">Oferable</th>
+                            <th scope="col">Resim</th>
+                            <th scope="col">Teklif</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-light">
+                        @foreach (var product in Products)
+                        {
+                            <tr>
+                                <td>@product.ProductName</td>
+                                <td>@product.Description</td>
+                                <td>@product.CategoryName</td>
+                                <td>@product.BrandName</td>
+                                <td>@product.Price</td>
+                                <td>@product.IsOfferable</td>
+                                <td><img src="@product.Image"/></td>
+                                <td><button class="btn btn-warning" @onclick="ChangeIsOfferable">Durumu Güncelle</button></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <button style=" margin-left:80%;
+                               margin-right:0;width:20%;" type="button" class="btn btn-primary btn-lg" @onclick="ChangePage">
+                    Ürün Ekle
+                </button>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="container">
+            <EditForm Model="_product" OnValidSubmit="AddProduct" class="card card-body bg-light mt-5 w-75 p-3">
+                <h3>Ürün Ekle</h3>
+                <div class="form-group row">
+                    <label for="username" class="col-sm-2 col-form-label">Ürün Adı</label>
+                    <div class="col-sm-10">
+                        <InputText id="username" class="form-control" @bind-Value="_product.ProductName" />
+                    </div>
+                </div>
+
+                <div class="form-group row">
+                    <label for="description" class="col-sm-2 col-form-label">Ürün Açıklaması</label>
+                    <div class="col-sm-10">
+                        <InputText id="description" class="form-control" @bind-Value="_product.Description" />
+                    </div>
+                </div>
+
+                <div class="form-group row">
+                    <label for="categoryId" class="col-sm-2 col-form-label">Kategori:</label>
+                    <div class="col-sm-10">
+                        <InputSelect id="categoryId" @bind-Value="_product.CategoryId" class="form-control">
+                            @foreach (var category in Categories)
+                                    {
+                                <option value="@category.Id">@category.CategoryName</option>
+                                    }
+                        </InputSelect>
+                    </div>
+                </div>
+                <div class="form-group row">
+                    <label for="brandId" class="col-sm-2 col-form-label">Marka:</label>
+                    <div class="col-sm-10">
+
+                        <InputSelect id="brandId" @bind-Value="_product.BrandId" class="form-control">
+                            @foreach (var brand in Brands)
+                                    {
+                                <option value="@brand.Id">@brand.BrandName</option>
+                                    }
+                        </InputSelect>
+                    </div>
+
+                </div>
+
+                <div class="form-group row">
+                    <label for="colorId" class="col-sm-2 col-form-label">Renk:</label>
+                    <div class="col-sm-10">
+                        <InputSelect style="width: 100%" id="colorId" @bind-Value="_product.ColorId" class="form-control">
+                            @foreach (var color in Colors)
+                                    {
+                                <option value="@color.Id">@color.ColorName</option>
+                                    }
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <div class="form-group row">
+                    <label for="userId" class="col-sm-2 col-form-label">Kullanıcı Durumu:</label>
+
+                    <div class="col-sm-10">
+
+                        <InputSelect id="userId" @bind-Value="_product.UsingStatusId" class="form-control">
+                            @foreach (var usingStatus in UsingStatuses)
+                                    {
+                                <option value="@usingStatus.Id">@usingStatus.UsingStatusName</option>
+                                    }
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <div class="form-group row">
+                    <label for="price" class="col-sm-2 col-form-label">Fiyat:</label>
+                    <div class="col-sm-10">
+                        <InputNumber @bind-Value=_product.Price min="1" max="99999999" class="form-control" />
+                        @*<InputText type="text" id="price" @bind-Value=Price class="form-control">
+                        </InputText>*@
+                    </div>
+
+                </div>
+
+                <div class="form-group row">
+                    <label for="img">Ürün resmi ekleyiniz:</label>
+                    <InputFile OnChange="@LoadFiles" accept="image/*"></InputFile>
+                </div>
+
+
+                <div class="row">
+                    <div class="col-md-12 text-right">
+                        <button type="submit" class="btn btn-warning">Ekle</button>
+                    </div>
+                </div>
+            </EditForm>
+            <button style=" margin-left:80%;
+                           margin-right:0;width:20%;" type="button" class="btn btn-primary btn-lg" @onclick="ChangePage">
+                Ürünler
+            </button>
+        </div>
+    }
+}
+
+
+@code {
+    public IEnumerable<GetProductViewModel> Products { get; set; }
+
+    public IEnumerable<CategoryViewModel> Categories { get; set; }
+    public IEnumerable<BrandViewModel> Brands { get; set; }
+    public IEnumerable<ColorViewModel> Colors { get; set; }
+    public IEnumerable<UsingStatusViewModel> UsingStatuses { get; set; }
+    public bool Paging { get; set; } = true;
+    public string Message { get; set; }
+    public string Price { get; set; }
+    private readonly CreateProductViewModel _product = new CreateProductViewModel();
+
+    public byte[] Image { get; set; }
+
+
+    private async Task LoadFiles(InputFileChangeEventArgs e)
+    {
+
+        var selectedFiles = e.GetMultipleFiles();
+
+        foreach (var file in selectedFiles)
+        {
+            Stream stream = file.OpenReadStream();
+            MemoryStream memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+
+            stream.Close();
+
+            UploadedViewModel uploadedFile = new UploadedViewModel
+            {
+                FileName = file.Name,
+                FileContent = memoryStream.ToArray()
+            };
+            memoryStream.Close();
+            var client = clientFactory.CreateClient();
+
+            var token = await _localStorage.GetAsync<string>("authToken");
+
+            string path = "http://localhost:3000/api/FileUpload";
+
+
+            var request = new HttpRequestMessage(HttpMethod.Post, path);
+
+            var content = JsonSerializer.Serialize(uploadedFile);
+
+            var bodyContent = new StringContent(content, Encoding.UTF8, "application/json");
+
+            var result = await client.PostAsync(path, bodyContent);
+
+            Image = uploadedFile.FileContent;
+            StateHasChanged();
+        }
+    }
+
+
+    public async void AddProduct()
+    {
+        var client = clientFactory.CreateClient();
+        var token = await _localStorage.GetAsync<string>("authToken");
+        string path = "http://localhost:3000/api/Products";
+
+        _product.Image = Convert.ToBase64String(Image);
+
+        var content = JsonSerializer.Serialize(_product);
+        var bodyContent = new StringContent(content, Encoding.UTF8, "application/json");
+
+        var request = new HttpRequestMessage(HttpMethod.Post, path);
+
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.Value);
+
+        var result = await client.PostAsync(path, bodyContent);
+
+        var response = await client.SendAsync(request);
+
+        if (response.IsSuccessStatusCode)
+        {
+            StateHasChanged();
+
+        }
+
+    }
+
+    public async void ChangeIsOfferable()
+    {
+        var client = clientFactory.CreateClient();
+        var token = await _localStorage.GetAsync<string>("authToken");
+
+        string path = "http://localhost:3000/api/Products/productisofferable";
+        var request = new HttpRequestMessage(HttpMethod.Put, path);
+
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.Value);
+
+        var response = await client.SendAsync(request);
+
+        if (response.IsSuccessStatusCode)
+        {
+            StateHasChanged();
+
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+
+    {
+        var client = clientFactory.CreateClient();
+
+        var token = await _localStorage.GetAsync<string>("authToken");
+
+        if (!string.IsNullOrWhiteSpace(token.Value))
+        {
+
+            var productResponse = await GetAllResponse("Products/userproducts", token.Value);
+
+
+            if (productResponse.IsSuccessStatusCode)
+            {
+                var json = await productResponse.Content.ReadAsStringAsync();
+                Products = JsonConvert.DeserializeObject<IEnumerable<GetProductViewModel>>(json);
+            }
+
+            var categoryResponse = await GetAllResponse("Categories");
+
+            if (categoryResponse.IsSuccessStatusCode)
+            {
+                var json = await categoryResponse.Content.ReadAsStringAsync();
+                Categories = JsonConvert.DeserializeObject<IEnumerable<CategoryViewModel>>(json);
+            }
+
+            var brandResponse = await GetAllResponse("Brands");
+
+            if (brandResponse.IsSuccessStatusCode)
+            {
+                var json = await brandResponse.Content.ReadAsStringAsync();
+                Brands = JsonConvert.DeserializeObject<IEnumerable<BrandViewModel>>(json);
+            }
+
+            var colorResponse = await GetAllResponse("Colors");
+            if (colorResponse.IsSuccessStatusCode)
+            {
+                var json = await colorResponse.Content.ReadAsStringAsync();
+                Colors = JsonConvert.DeserializeObject<IEnumerable<ColorViewModel>>(json);
+            }
+
+            var usingStatusResponse = await GetAllResponse("UsingStatuses");
+            if (usingStatusResponse.IsSuccessStatusCode)
+            {
+                var json = await usingStatusResponse.Content.ReadAsStringAsync();
+                UsingStatuses = JsonConvert.DeserializeObject<IEnumerable<UsingStatusViewModel>>(json);
+            }
+        }
+    }
+    public void ChangePage()
+    {
+        Paging = !Paging;
+    }
+
+    private async Task<HttpResponseMessage> GetAllResponse(string controllerName, string token = null)
+    {
+        var client = clientFactory.CreateClient();
+        string path = "http://localhost:3000/api/";
+        var request = new HttpRequestMessage(HttpMethod.Get, path + controllerName);
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+
+        return await client.SendAsync(request);
+    }
+
+
+}

@@ -1,0 +1,119 @@
+﻿@page "/"
+@using Newtonsoft.Json
+@using UnluCoProductCatalog.Application.ViewModels.ProductViewModels
+@using BlazorUI.Common
+@using UnluCoProductCatalog.Application.ViewModels.CategoryViewModels
+@inject IHttpClientFactory ClientFactory
+
+
+@if (Products is null)
+{
+    <h3>Loading...</h3>
+}
+
+else
+{
+    <div class="row">
+        <div class="col-md-3">
+            <div class="list-group">
+                @foreach (var category in Categories)
+                {
+                    <button type="button" class="list-group-item list-group-item-action" @onclick="() => { if (category != null) SetSelect(category.Id); }">@category.CategoryName</button>
+                }
+
+            </div>
+        </div>
+        <div class="col-md-9">
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <th scope="col">Ürün Adı</th>
+                    <th scope="col">Açıklama</th>
+                    <th scope="col">Kategori</th>
+                    <th scope="col">Renk</th>
+                    <th scope="col">Marka</th>
+                    <th scope="col">Price</th>
+                    <th scope="col">Resim</th>
+                </tr>
+                </thead>
+                <tbody>
+
+                @foreach (var product in Products)
+                {
+                    <tr>
+                        <td>@product.ProductName</td>
+                        <td>@product.Description</td>
+                        <td>@product.CategoryName</td>
+                        <td>@product.ColorName</td>
+                        <td>@product.BrandName</td>
+                        <td>@product.Price</td>
+                        <td> <img src="https://picsum.photos/64" /></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code
+{
+    public IEnumerable<GetProductViewModel> Products { get; set; }
+    public IEnumerable<CategoryViewModel> Categories { get; set; }
+    public Task<AuthenticationState> AuthState { get; set; }
+
+    private int _categoryId;
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        var client = ClientFactory.CreateClient();
+        HttpRequestMessage request;
+
+        var categoryRequest = new HttpRequestMessage(HttpMethod.Get, "http://localhost:3000/api/Categories/");
+
+        var categoryResponse = await client.SendAsync(categoryRequest);
+
+        if (categoryResponse.IsSuccessStatusCode)
+        {
+            var json = await categoryResponse.Content.ReadAsStringAsync();
+            Categories = JsonConvert.DeserializeObject<IEnumerable<CategoryViewModel>>(json).Take(10);
+        }
+
+        request = new HttpRequestMessage(HttpMethod.Get, "http://localhost:3000/api/Products/categoryId");
+
+        var response = await client.SendAsync(request);
+        if (response.IsSuccessStatusCode)
+        {
+            var json = await response.Content.ReadAsStringAsync();
+            Products = JsonConvert.DeserializeObject<IEnumerable<GetProductViewModel>>(json);
+
+        }
+
+        StateHasChanged();
+
+    }
+
+    public void SetSelect(int id)
+    {
+        _categoryId = id;
+        GetProductsByCategoryId(id);
+    }
+
+    private async void GetProductsByCategoryId(int id)
+    {
+        string path = $"http://localhost:3000/api/Products/categoryId?id=" + $"{id}";
+
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+
+        var client = ClientFactory.CreateClient();
+
+        var response = await client.SendAsync(request);
+        if (response.IsSuccessStatusCode)
+        {
+            var json = await response.Content.ReadAsStringAsync();
+            Products = JsonConvert.DeserializeObject<IEnumerable<GetProductViewModel>>(json);
+        }
+
+    }
+}

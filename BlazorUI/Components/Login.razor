@@ -1,0 +1,67 @@
+﻿@page "/login"
+@using Microsoft.AspNetCore.Components
+@using UnluCoProductCatalog.Application.ViewModels.UserViewModels
+@using BlazorUI.Common.Authentication
+@inject IHttpClientFactory ClientFactory
+@inject IAuthenticationService authenticationService
+
+@if (ShowAuthError)
+{
+    <div class="alert alert-danger" role="alert">
+        <p>Unauthorized</p>
+    </div>
+}
+
+<EditForm Model="_userForAuthentication" OnValidSubmit="Submit" class="card card-body bg-light mt-5 w-75 p-3">
+    <DataAnnotationsValidator />
+    <h2>Login</h2>
+    <div class="form-group row">
+        <label for="email" class="col-sm-2 col-form-label">Email:</label>
+        <div class="col-md-10">
+            <InputText id="email" class="form-control" @bind-Value="_userForAuthentication.Email" />
+            <ValidationMessage For="@(() => _userForAuthentication.Email)" />
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="password" class="col-sm-2 col-form-label">Password:</label>
+        <div class="col-md-10">
+            <InputText type="password" id="password" class="form-control" @bind-Value="_userForAuthentication.Password" />
+            <ValidationMessage For="@(() => _userForAuthentication.Password)" />
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12 text-right">
+            <button type="submit" class="btn btn-success">Login</button>
+        </div>
+    </div>
+</EditForm>
+@code
+{
+    private readonly LoginViewModel _userForAuthentication = new LoginViewModel();
+    [Inject]
+    public NavigationManager NavigationManager { get; set; }
+
+    public bool ShowAuthError { get; set; }
+
+    private async Task Submit()
+    {
+        ShowAuthError = false;
+
+
+
+
+        var result = await authenticationService.Login(_userForAuthentication);
+
+
+        if (result is not null)
+        {
+            NavigationManager.NavigateTo("/");
+        }
+
+        else
+        {
+            ShowAuthError = true;
+        }
+    }
+
+}

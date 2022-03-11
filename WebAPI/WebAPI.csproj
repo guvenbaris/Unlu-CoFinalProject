@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="5.0.13">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="5.6.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\UnluCoProductCatalog.Application\UnluCoProductCatalog.Application.csproj" />
+    <ProjectReference Include="..\UnluCoProductCatalog.Infrastructure\UnluCoProductCatalog.Infrastructure.csproj" />
+    <ProjectReference Include="..\UnluCoProductCatalog.Persistence\UnluCoProductCatalog.Persistence.csproj" />
+  </ItemGroup>
+
+</Project>

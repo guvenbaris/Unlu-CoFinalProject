@@ -1,0 +1,174 @@
+﻿@page "/brand"
+@using UnluCoProductCatalog.Application.ViewModels.BrandViewModels
+@using UnluCoProductCatalog.Application.ViewModels.CategoryViewModels
+
+@using System.Text
+@using Newtonsoft.Json
+@inject IHttpClientFactory clientFactory
+
+@if (Brands is null)
+{
+    <h2>Loading...</h2>
+}
+
+else
+{
+    <div class="d-flex">
+        <div class="p-2 mr-auto">
+            <div style="height :48vh; max-width:90%; margin:20px;">
+                <h2>Kategoriler</h2>
+                <table class="table">
+                    <thead class="thead-dark">
+                    <tr>
+                        <th scope="col">Kategori Adı</th>
+                        <th scope="col"></th>
+                        <th scope="col"></th>
+                        <th scope="col"></th>
+                    </tr>
+                    </thead>
+                    <tbody class="bg-light">
+                    @foreach (var brand in Brands)
+                    {
+                        <tr>
+                            <td>@brand.BrandName</td>
+                            <td><button class="btn btn-warning">Ekle</button></td>
+                            <td><button class="btn btn-warning "@onclick="()=>TakeBrandId(brand.Id)">Güncelle</button></td>
+                            <td><button class="btn btn-danger" @onclick="() => DeleteBrand(brand.Id)">Sil</button></td>
+                        </tr>
+                    }
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @if (IsUpdate)
+        {
+            <div class="p-6 " style="width: 50%;">
+                <EditForm Model="_brand" OnValidSubmit="AddBrand" class="card card-body bg-light mt-5 w-75 p-3">
+                    <h3>Marka</h3>
+                    <div class="form-group row">
+                        <label for="name" class="col-sm-4 col-form-label">Marka Adı</label>
+                        <div class="col-sm-12">
+                            <InputText id="name" class="form-control" @bind-Value="_brand.BrandName"/>
+                        </div>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-warning btn-block">Ekle</button>
+                    </div>
+                </EditForm>
+            </div>
+        }
+
+        else
+        {
+            <div class="p-6 " style="width: 50%;">
+                <EditForm Model="_brand" OnValidSubmit="UpdateBrand" class="card card-body bg-light mt-5 w-75 p-3">
+                    <h3>Kategori</h3>
+                    <div class="form-group row">
+                        <label for="deneme" class="col-sm-4 col-form-label">Marka Adı</label>
+                        <div class="col-sm-12">
+                            <InputText id="deneme" class="form-control" @bind-Value="_brand.BrandName"/>
+                        </div>
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-warning btn-block">Güncelle</button>
+                    </div>
+                </EditForm>
+            </div>
+        }
+    </div>
+}
+
+@code {
+
+    public IEnumerable<BrandViewModel> Brands { get; set; }
+    private readonly CommandBrandViewModel _brand = new CommandBrandViewModel();
+    public string BrandName { get; set; }
+    public int BrandId { get; set; }
+    public bool IsUpdate { get; set; } = true;
+
+
+    public void TakeBrandId(int id)
+    {
+        BrandId = id;
+        IsUpdate = false;
+    }
+
+    public async void AddBrand()
+    {
+
+
+        var client = clientFactory.CreateClient();
+
+        string path = "http://localhost:3000/api/Brands";
+
+
+        var request = new HttpRequestMessage(HttpMethod.Post, path);
+
+        var content = JsonConvert.SerializeObject(_brand);
+
+        var bodyContent = new StringContent(content, Encoding.UTF8, "application/json");
+
+
+        var result = await client.PostAsync(path, bodyContent);
+
+        var response = await client.SendAsync(request);
+
+        StateHasChanged();
+    }
+
+    protected override async void OnAfterRender(bool firstRender)
+    {
+        var client = clientFactory.CreateClient();
+
+        string path = "http://localhost:3000/api/Brands";
+
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+
+        var response = await client.SendAsync(request);
+
+        if (response.IsSuccessStatusCode)
+        {
+
+            var json = await response.Content.ReadAsStringAsync();
+            Brands = JsonConvert.DeserializeObject<IEnumerable<BrandViewModel>>(json).Take(10);
+
+        }
+        StateHasChanged();
+    }
+
+    public async void UpdateBrand()
+    {
+
+        var client = clientFactory.CreateClient();
+
+        string path = "http://localhost:3000/api/Brands/"+BrandId;
+
+        var request = new HttpRequestMessage(HttpMethod.Put, path);
+
+        var content = JsonConvert.SerializeObject(_brand);
+
+        var bodyContent = new StringContent(content, Encoding.UTF8, "application/json");
+
+        var result = await client.PutAsync( path, bodyContent);
+
+    }
+
+    public async void DeleteBrand(int id)
+    {
+        var client = clientFactory.CreateClient();
+
+        string path = "http://localhost:3000/api/Brands/"+id;
+
+        var request = new HttpRequestMessage(HttpMethod.Delete, path);
+
+        var content = JsonConvert.SerializeObject(_brand);
+
+        var bodyContent = new StringContent(content, Encoding.UTF8, "application/json");
+
+        var result = await client.DeleteAsync(path);
+
+        var response = await client.SendAsync(request);
+
+    }
+}
