@@ -164,3 +164,4 @@ Kullanıcını ürünlerinin listelendiği ve de ürün durumunu güncelleyebild
 **Satın Al**
 
 Kullanıcının ürün satın alabildiği veya teklif verebildiği sayfadır.
+ 
