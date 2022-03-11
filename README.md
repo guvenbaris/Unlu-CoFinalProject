@@ -1,4 +1,3 @@
-
 # Unlu&Co Ve Patika.dev Final Projesi
 
 ## Ürün Katalog Projesi
